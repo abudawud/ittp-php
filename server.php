@@ -3,6 +3,7 @@
 require_once "protocol.php";
 require_once "database/db.php";
 require_once "apis/log.php";
+require_once "apis/auth.php";
 require_once "utils/logger.php";
 
 error_reporting(E_ALL);
@@ -58,10 +59,17 @@ do {
 
           switch($header['method']){
             case METHOD_POST:{
+              if($header['action'] == ACTION_POST_AUTH){
+                socket_recv($devsock, $data, $header['length'], MSG_WAITALL);
+                if(!addAuthAPI($db1, $data, $devsock))
+                  break 2;
+              }
               if($header['action'] == ACTION_POST_SENSOR_1){
                 socket_recv($devsock, $data, $header['length'], MSG_WAITALL);
                 addLogSensor1API($db1, $data);
               }
+
+              break;
             }
           }
         }
