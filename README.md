@@ -2,8 +2,8 @@
 IOTe Telemetry Transport Protocol - PHP
 
 ## PROTOCOL
-| code     | identity  | method  | action | length    |
-| 16 bit   | 32 bit u  | 8 bit u | 8 bit 8| 16 bit u  |
+| code     | method  | action | length    | payload |
+| 16 bit   | 8 bit u | 8 bit 8| 16 bit u  | length  |  
 
 ## Code
 * code : 0x45 0x21

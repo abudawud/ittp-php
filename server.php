@@ -37,25 +37,32 @@ do {
         break;
     }
     /* Accept connection. */
-    $msg = "Welcome to IOTe, Please send your ID";
+    $msg = "IOTe 0.1 $ \n";
     socket_write($devsock, $msg, strlen($msg));
     logger("Client connected");
     $db1 = getDB();
 
     do {
         $buf = null;
-        if (0 == socket_recv($devsock, $buf, 10, MSG_WAITALL)) {
+        if (0 == socket_recv($devsock, $buf, 6, MSG_WAITALL)) {
             continue;
         }else{
           $header = unpack(UNPACK_HEADER, $buf);
-          if($header['id'] != 1){
-            $err = "Invalid ID, Communitaion will closed!";
-            socket_write($devsock, $err, strlen($err));
-            logger("Client Disconnected");
-            $db1->close();
+          logger(json_encode($header));
+          if($header['code'] != CODE){
+            $msg = "Invalid Code!\n";
+            logger("Received Invalid Code");
+            socket_write($devsock, $msg, strlen($msg));
             break;
-          }else{
-            addLogAPI($db1, "123");
+          }
+
+          switch($header['method']){
+            case METHOD_POST:{
+              if($header['action'] == ACTION_POST_SENSOR_1){
+                socket_recv($devsock, $data, $header['length'], MSG_WAITALL);
+                addLogSensor1API($db1, $data);
+              }
+            }
           }
         }
     } while (true);
