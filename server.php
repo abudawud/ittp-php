@@ -45,7 +45,7 @@ do {
 
     do {
         $buf = null;
-        if (0 == socket_recv($devsock, $buf, 6, MSG_WAITALL)) {
+        if (0 == socket_recv($devsock, $buf, 10, MSG_WAITALL)) {
             continue;
         }else{
           $header = unpack(UNPACK_HEADER, $buf);
@@ -53,20 +53,23 @@ do {
           if($header['code'] != CODE){
             $msg = "Invalid Code!\n";
             logger("Received Invalid Code");
+            logger(json_encode($header));
             socket_write($devsock, $msg, strlen($msg));
             break;
+          }else{
+            logger("CODE MATCH");
           }
 
+          socket_recv($devsock, $data, $header['length'], MSG_WAITALL);
           switch($header['method']){
             case METHOD_POST:{
               if($header['action'] == ACTION_POST_AUTH){
-                socket_recv($devsock, $data, $header['length'], MSG_WAITALL);
                 if(!addAuthAPI($db1, $data, $devsock))
                   break 2;
               }
+
               if($header['action'] == ACTION_POST_SENSOR_1){
-                socket_recv($devsock, $data, $header['length'], MSG_WAITALL);
-                addLogSensor1API($db1, $data);
+                addLogSensorsAPI($db1, $data, $header['identity']);
               }
 
               break;

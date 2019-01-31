@@ -5,27 +5,34 @@ require_once "utils/logger.php";
 require_once "utils/datetime.php";
 require_once "utils/inttype.php";
 
-function addLogSensor1API($db, $packet){
-  $data = unpack("Nidentity/Cid/nval", $packet);
+function addLogSensorsAPI($db, $packet, $identity){
+  $data = unpack("C6id/S6val", $packet);
 
-  $auth = getAuth($db, $data['identity']);
+  $auth = getAuth($db, $identity);
   if($auth === false){
     logger("[ERROR]\n\t" . getDBError($db));
   }
 
   if(!count($auth)){
-    logger("[LOGIN FAILED] ID: " . $data['identity']);
+    logger("[LOGIN FAILED] ID: " . $identity);
     return false;
   }
 
-  $log = new Log();
-  $log->sensorId = $data['id'];
-  $log->timestamp = getDateTime();
-  $float = intU2S($data['val']) / 100.0;
-  $log->value = $float;
+  $logs = array();
+  $time = getDateTime();
+
+  $i = 1;
+  while($i++ < 6){
+    $log = new Log();
+    $log->sensorId = $data["id$i"];
+    $log->timestamp = $time;
+    $float = $data["val$i"] / 100.0;
+    $log->value = $float;
+    array_push($logs, $log);
+  }
 
   logger(json_encode($data));
-  $status = addLog($db, $log);
+  $status = addLogs($db, $logs);
   if(!$status){
     logger("[ERROR]\n\t" . getDBError($db));
   }else{

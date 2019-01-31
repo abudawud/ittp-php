@@ -16,6 +16,8 @@ function addAuthAPI($db, $packet, $sock){
     return false;
   }
 
+  $msg = pack(PACK_HEADER, CODE, METHOD_INFO, ACTION_INFO_AUTH_OK, LEN_ZERO);
+  socket_write($sock, $msg, strlen($msg));
   logger("[LOGIN OK] ID: " . $data['identity']);
   return true;
 }
