@@ -26,8 +26,13 @@ function addLogSensorsAPI($db, $packet, $identity){
     $log = new Log();
     $log->sensorId = $data["id$i"];
     $log->timestamp = $time;
-    $float = $data["val$i"] / 100.0;
-    $log->value = $float;
+
+    if($data["id$i"] == 1 || $data["id$i"] == 2){
+      $float = $data["val$i"] / 100.0;
+      $log->value = $float;
+    }else{
+      $log->value = $data["val$i"];
+    }
     array_push($logs, $log);
   }
 

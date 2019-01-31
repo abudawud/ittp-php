@@ -45,8 +45,10 @@ do {
 
     do {
         $buf = null;
-        if (0 == socket_recv($devsock, $buf, 10, MSG_WAITALL)) {
-            continue;
+        if (false === socket_recv($devsock, $buf, 10, MSG_WAITALL)) {
+          logger("[ERROR] " . socket_strerror(socket_last_error($devsock)) );
+          $db1->close();
+          break;
         }else{
           $header = unpack(UNPACK_HEADER, $buf);
           logger(json_encode($header));
@@ -55,6 +57,7 @@ do {
             logger("Received Invalid Code");
             logger(json_encode($header));
             socket_write($devsock, $msg, strlen($msg));
+            $db1->close();
             break;
           }else{
             logger("CODE MATCH");
@@ -64,8 +67,10 @@ do {
           switch($header['method']){
             case METHOD_POST:{
               if($header['action'] == ACTION_POST_AUTH){
-                if(!addAuthAPI($db1, $data, $devsock))
+                if(!addAuthAPI($db1, $data, $devsock)){
+                  $db1->close();
                   break 2;
+                }
               }
 
               if($header['action'] == ACTION_POST_SENSOR_1){
@@ -77,6 +82,7 @@ do {
           }
         }
     } while (true);
+    logger("[INFO] Client Disconnected!");
     socket_close($devsock);
 } while (true);
 
