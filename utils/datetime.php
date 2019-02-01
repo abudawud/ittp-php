@@ -1,7 +1,7 @@
 <?php
 
 function getDateTime(){
-  return date("d-m-Y H:i:s");
+  return date("Y-m-d H:i:s");
 }
 
 ?>
