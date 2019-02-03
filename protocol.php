@@ -13,5 +13,6 @@ define(ACTION_INFO_AUTH_FAILED, 0x02);
 define(LEN_ZERO, 0x00);
 
 //HEADER
+define(HEADER_LEN, 10);
 define(PACK_HEADER, "SCCS");
 define(UNPACK_HEADER, "Scode/Cmethod/Caction/Slength/Lidentity");

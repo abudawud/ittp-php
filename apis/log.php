@@ -5,23 +5,30 @@ require_once "utils/logger.php";
 require_once "utils/datetime.php";
 require_once "utils/inttype.php";
 
+$logc = new Logger();
 function addLogSensorsAPI($db, $packet, $identity){
-  $data = unpack("C6id/S6val", $packet);
+  global $logc;
 
   $auth = getAuth($db, $identity);
   if($auth === false){
-    logger("[ERROR]\n\t" . getDBError($db));
-  }
-
-  if(!count($auth)){
-    logger("[LOGIN FAILED] ID: " . $identity);
+    $logc->error(getDBError($db));
     return false;
   }
 
+  if(!count($auth)){
+    $logc->warning("Login failed, ID " . $identity);
+    return false;
+  }
+
+  if(strlen($packet) < 18){
+    $logc->warning("Payload less than ACTION_POST_SENSOR_1 needed!");
+    return false;
+  }
+  $data = unpack("C6id/S6val", $packet);
   $logs = array();
   $time = getDateTime();
 
-  $i = 1;
+  $i = 0;
   while($i++ < 6){
     if($data["val$i"] === 0)
       continue;
@@ -39,12 +46,11 @@ function addLogSensorsAPI($db, $packet, $identity){
     array_push($logs, $log);
   }
 
-  logger(json_encode($data));
   $status = addLogs($db, $logs);
   if(!$status){
-    logger("[ERROR]\n\t" . getDBError($db));
-  }else{
-    logger("AddLogAPI success");
+    $logc->error(getDBError($db));
+    $logc->error(getLogSQL());
+    return false;
   }
 
   return true;

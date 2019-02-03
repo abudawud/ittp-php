@@ -7,17 +7,61 @@ require_once "apis/log.php";
 require_once "apis/auth.php";
 require_once "utils/logger.php";
 
+date_default_timezone_set("Asia/Jakarta");
+$log = new Logger();
 $loop = React\EventLoop\Factory::create();
-$socket = new React\Socket\TcpServer('0.0.0.0:19091', $loop);
+$socket = new React\Socket\TcpServer('0.0.0.0:9091', $loop);
+$db = getDB();
 
-$socket->on('connection', function (React\Socket\ConnectionInterface $connection) {
+$socket->on('connection', function (React\Socket\ConnectionInterface $connection) use ($log, $db) {
     $connection->write("IOTe $\n");
+    $log->info("Client connected: " . $connection->getRemoteAddress());
 
-    $connection->on('data', function ($data) use ($connection) {
-      $bin = unpack("Scode/Cmethod/Caction/Slength/Lidentity", $data);
-      echo $connection->getRemoteAddress() . " - " . json_encode($bin) . "\n";
+    $connection->on('data', function ($data) use ($connection, $db, $log) {
+      if(strlen($data) < HEADER_LEN){
+        $log->warning("Receive data less then " . HEADER_LEN);
+        $connection->close();
+        return;
+      }
+      $header = substr($data, 0, HEADER_LEN);
+      $payload = substr($data, HEADER_LEN);
+
+      $hData = unpack(UNPACK_HEADER, $header);
+      if($hData['code'] != CODE){
+        $log->warning("Invalid encryption from " . $connection->getRemoteAddress());
+        $connection->close();
+      }else if(strlen($payload) != $hData['length']){
+        $log->warning("Receive payload len unequal in header");
+        $connection->close();
+      }else{
+        switch ($hData['method']) {
+          case METHOD_POST:
+            switch ($hData['action']) {
+              case ACTION_POST_SENSOR_1:
+                if(addLogSensorsAPI($db, $payload, $hData['identity']) === false)
+                  $connection->close();
+                break;
+
+              default:
+                $log->warning("Invalid action " . $hData['action']);
+                $connection->close();
+                break;
+            }
+            break;
+
+          default:
+            $log->warning("Invalid method " . $hData['method']);
+            $connection->close();
+            break;
+        }
+      }
+    });
+
+    $connection->on('close', function() use ($connection, $log){
+      $log->info("Client Disconnected " . $connection->getRemoteAddress());
     });
 });
 
+$log->info("ITTP Started on port 19901");
 $loop->run();
 ?>
