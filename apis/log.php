@@ -21,7 +21,7 @@ function addLogSensorsAPI($db, $packet, $identity){
   $logs = array();
   $time = getDateTime();
 
-  $i = 1;
+  $i = 0;
   while($i++ < 6){
     if($data["val$i"] === 0)
       continue;
