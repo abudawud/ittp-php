@@ -12,6 +12,7 @@ function addLogSensorsAPI($db, $packet, $identity){
   $auth = getAuth($db, $identity);
   if($auth === false){
     $logc->error(getDBError($db));
+    $logc->error(getLogSQL());
     return false;
   }
 
@@ -46,11 +47,13 @@ function addLogSensorsAPI($db, $packet, $identity){
     array_push($logs, $log);
   }
 
-  $status = addLogs($db, $logs);
-  if(!$status){
-    $logc->error(getDBError($db));
-    $logc->error(getLogSQL());
-    return false;
+  if(count($logs)){
+    $status = addLogs($db, $logs);
+    if(!$status){
+      $logc->error(getDBError($db));
+      $logc->error(getLogSQL());
+      return false;
+    }
   }
 
   return true;

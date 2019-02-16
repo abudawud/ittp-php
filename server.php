@@ -13,14 +13,28 @@ $loop = React\EventLoop\Factory::create();
 $socket = new React\Socket\TcpServer('0.0.0.0:9091', $loop);
 $db = getDB();
 
-$socket->on('connection', function (React\Socket\ConnectionInterface $connection) use ($log, $db) {
+$socket->on('connection', function (React\Socket\ConnectionInterface $connection) use ($loop, $log, $db) {
+    if(!$db->ping()){
+      $log->warning("Database disconnected!");
+      $db = getDB();
+    }
+
     $connection->write("IOTe $\n");
     $log->info("Client connected: " . $connection->getRemoteAddress());
 
-    $connection->on('data', function ($data) use ($connection, $db, $log) {
+    $func = function () use ($connection, $log) {
+      $log->warning("Connection timeout for " . $connection->getRemoteAddress());
+      $connection->end("Connection Timeout");
+    };
+
+    $timer = $loop->addTimer(60, $func);
+
+    $connection->on('data', function ($data) use ($connection, $db, $log, $func, $loop, &$timer) {
+      $loop->cancelTimer($timer);
+
       if(strlen($data) < HEADER_LEN){
         $log->warning("Receive data less then " . HEADER_LEN);
-        $connection->close();
+        $connection->end("Invalid IOTe protocol!");
         return;
       }
       $header = substr($data, 0, HEADER_LEN);
@@ -29,22 +43,25 @@ $socket->on('connection', function (React\Socket\ConnectionInterface $connection
       $hData = unpack(UNPACK_HEADER, $header);
       if($hData['code'] != CODE){
         $log->warning("Invalid encryption from " . $connection->getRemoteAddress());
-        $connection->close();
+        $connection->end("Invalid IOTe code!");
       }else if(strlen($payload) != $hData['length']){
         $log->warning("Receive payload len unequal in header");
-        $connection->close();
+        $connection->end("Invalid IOTe payload!");
       }else{
         switch ($hData['method']) {
           case METHOD_POST:
             switch ($hData['action']) {
               case ACTION_POST_SENSOR_1:
-                if(addLogSensorsAPI($db, $payload, $hData['identity']) === false)
+                if(addLogSensorsAPI($db, $payload, $hData['identity']) === false){
                   $connection->close();
+                  return;
+                }
                 break;
 
               default:
                 $log->warning("Invalid action " . $hData['action']);
                 $connection->close();
+                return;
                 break;
             }
             break;
@@ -54,6 +71,8 @@ $socket->on('connection', function (React\Socket\ConnectionInterface $connection
             $connection->close();
             break;
         }
+
+        $timer = $loop->addTimer(240, $func);
       }
     });
 
